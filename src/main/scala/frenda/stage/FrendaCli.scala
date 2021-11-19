@@ -10,7 +10,6 @@ trait FrendaCli {
   parser.note("Frenda Specific Options")
   Seq(
     JobsAnnotation,
-    StoreHashAnnotation,
     SilentModeAnnotation,
   ).foreach(_.addOptions(parser))
 }
