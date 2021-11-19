@@ -1,13 +1,16 @@
 package frenda.stage
 
 import firrtl.annotations.{Annotation, NoTargetAnnotation}
+import firrtl.ir.Circuit
 import firrtl.options.{HasShellOptions, ShellOption, Unserializable}
 
 sealed trait FrendaAnnotation extends Unserializable {
   this: Annotation =>
 }
 
-case class JobsAnnotation(jobs: Int) extends NoTargetAnnotation with FrendaAnnotation
+case class JobsAnnotation(jobs: Int)
+  extends NoTargetAnnotation
+    with FrendaAnnotation
 
 object JobsAnnotation extends HasShellOptions {
   val options: Seq[ShellOption[_]] = Seq(
@@ -47,3 +50,7 @@ case object SilentModeAnnotation
     )
   )
 }
+
+case class SplitModulesAnnotations(circuits: Seq[Circuit])
+  extends NoTargetAnnotation
+    with FrendaAnnotation
