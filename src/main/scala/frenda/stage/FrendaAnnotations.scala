@@ -23,20 +23,6 @@ object JobsAnnotation extends HasShellOptions {
   )
 }
 
-case object StoreHashAnnotation
-  extends NoTargetAnnotation
-    with FrendaAnnotation
-    with HasShellOptions {
-  val options: Seq[ShellOption[_]] = Seq(
-    new ShellOption[Unit](
-      longOption = "store-hash",
-      shortOption = Some("h"),
-      toAnnotationSeq = _ => Seq(StoreHashAnnotation),
-      helpText = "stores only hash instead of the full FIRRTL file",
-    )
-  )
-}
-
 case object SilentModeAnnotation
   extends NoTargetAnnotation
     with FrendaAnnotation
