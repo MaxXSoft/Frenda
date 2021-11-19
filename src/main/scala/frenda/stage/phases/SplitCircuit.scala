@@ -5,7 +5,7 @@ import firrtl.options.Phase
 import firrtl.stage.FirrtlCircuitAnnotation
 import firrtl.{AnnotationSeq, WDefInstanceConnector}
 import frenda.FrendaException
-import frenda.stage.SplitModulesAnnotations
+import frenda.stage.{SplitModule, SplitModulesAnnotations}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -38,9 +38,9 @@ class SplitCircuit extends Phase {
    * Split the specific circuit to separated modules.
    *
    * @param circuit the input circuit
-   * @return sequence of FIRRTL modules (circuits)
+   * @return sequence of split FIRRTL modules (circuits)
    */
-  private def splitCircuitIntoModules(circuit: Circuit): Seq[Circuit] = {
+  private def splitCircuitIntoModules(circuit: Circuit): Seq[SplitModule] = {
     val modMap = circuit.modules.map(m => m.name -> m).toMap
     // turn each module into it's own circuit with it as the top and all instantiated modules as `ExtModules`
     circuit.modules.collect {
@@ -50,7 +50,8 @@ class SplitCircuit extends Phase {
           case Module(info, name, ports, _) => ExtModule(info, name, ports, name, Seq.empty)
           case ext: ExtModule => ext
         }
-        Circuit(m.info, extModules :+ m, m.name)
+        val circuit = Circuit(m.info, extModules :+ m, m.name)
+        SplitModule(m.name, circuit)
     }
   }
 
