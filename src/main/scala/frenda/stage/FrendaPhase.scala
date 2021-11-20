@@ -1,8 +1,9 @@
 package frenda.stage
 
+import firrtl.options.phases.WriteOutputAnnotations
 import firrtl.options.{Dependency, PhaseManager}
 import firrtl.stage.phases.AddCircuit
-import frenda.stage.phases.CheckOptions
+import frenda.stage.phases._
 
 /**
  * All phases required by Frenda.
@@ -13,6 +14,9 @@ object FrendaPhase {
   val targets: Seq[PhaseManager.PhaseDependency] = Seq(
     Dependency[CheckOptions],
     Dependency[AddCircuit],
-    // TODO
+    Dependency[PreTransform],
+    Dependency[SplitCircuit],
+    Dependency[IncrementalCompile],
+    Dependency[WriteOutputAnnotations],
   )
 }
