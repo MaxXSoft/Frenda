@@ -8,10 +8,10 @@ val firrtlVersion = "1.4.4"
 lazy val firrtlLib = "edu.berkeley.cs" %% "firrtl" % firrtlVersion
 libraryDependencies += firrtlLib
 
-// Kryo
-val kryoVersion = "5.2.0"
-lazy val kryoLib = "com.esotericsoftware.kryo" % "kryo5" % kryoVersion
-libraryDependencies += kryoLib
+// Chill
+val chillVersion = "0.10.0"
+lazy val chillLib = "com.twitter" %% "chill" % chillVersion
+libraryDependencies += chillLib
 
 // Assembly settings
 assembly / assemblyJarName := "frenda.jar"
