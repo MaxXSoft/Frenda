@@ -5,7 +5,7 @@ import firrtl.options.Phase
 import firrtl.stage.FirrtlCircuitAnnotation
 import firrtl.{AnnotationSeq, WDefInstanceConnector}
 import frenda.FrendaException
-import frenda.stage.{SplitModule, SplitModulesAnnotation}
+import frenda.stage.{FrendaOptions, SplitModule, SplitModulesAnnotation}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -57,6 +57,8 @@ class SplitCircuit extends Phase {
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.map {
     case FirrtlCircuitAnnotation(circuit) =>
+      val options = FrendaOptions.fromAnnotations(annotations)
+      options.log("Splitting circuit...")
       SplitModulesAnnotation(splitCircuitIntoModules(circuit))
     case other => other
   }
