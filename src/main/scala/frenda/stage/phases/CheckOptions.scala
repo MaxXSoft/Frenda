@@ -4,7 +4,7 @@ import firrtl.AnnotationSeq
 import firrtl.options.{Phase, TargetDirAnnotation}
 import firrtl.stage.{FirrtlCircuitAnnotation, FirrtlFileAnnotation, FirrtlSourceAnnotation}
 import frenda.FrendaException
-import frenda.stage.{FrendaOptions, FrendaOptionsAnnotation, JobsAnnotation, SilentModeAnnotation}
+import frenda.stage._
 
 /**
  * Checks command line options, including input and output.
@@ -43,6 +43,9 @@ class CheckOptions extends Phase {
       throw new FrendaException(s"Error: jobs number must be greater than 0, but found $jobs")
     }
     val silentMode = annotations.exists { case SilentModeAnnotation => true; case _ => false }
-    annotations ++ Seq(FrendaOptionsAnnotation(FrendaOptions(targetDir, jobs, silentMode)))
+    val cleanBuild = annotations.exists { case CleanBuildAnnotation => true; case _ => false }
+    annotations ++ Seq(
+      FrendaOptionsAnnotation(FrendaOptions(targetDir, jobs, silentMode, cleanBuild))
+    )
   }
 }
