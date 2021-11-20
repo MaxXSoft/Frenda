@@ -43,14 +43,18 @@ case object SilentModeAnnotation
 }
 
 final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean) {
-  /** The global execution context of all `Future`s. */
-  lazy val executionContext: ExecutionContext = new ExecutionContext {
+  class GlobalExecutionContext extends ExecutionContext {
     private val threadPool = Executors.newFixedThreadPool(jobs)
 
     override def execute(runnable: Runnable): Unit = threadPool.submit(runnable)
 
     override def reportFailure(cause: Throwable): Unit = ()
+
+    def shutdown(): Unit = threadPool.shutdown()
   }
+
+  /** The global execution context of all `Future`s. */
+  lazy val executionContext: GlobalExecutionContext = new GlobalExecutionContext
 
   /** Total progress. */
   var totalProgress: Int = 0
@@ -73,9 +77,7 @@ final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean
    *
    * @param message the message
    */
-  @inline def logSync(message: String): Unit = if (!silentMode) stream.synchronized {
-    stream.println(message)
-  }
+  @inline def logSync(message: String): Unit = log(message)
 
   /**
    * Logs message with progress information if not in silent mode (thread-safe).
@@ -84,9 +86,7 @@ final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean
    */
   @inline def logProgress(message: String): Unit = if (!silentMode) {
     val progress = currentProgress.incrementAndGet()
-    stream.synchronized {
-      stream.println(s"[$progress/$totalProgress] $message")
-    }
+    stream.println(s"[$progress/$totalProgress] $message")
   }
 }
 
@@ -109,4 +109,6 @@ final case class SplitModule(name: String, circuit: Circuit)
 
 case class FutureSplitModulesAnnotation(futures: Seq[Future[SplitModule]])
   extends NoTargetAnnotation
-    with FrendaAnnotation
+    with FrendaAnnotation {
+  override def toString: String = s"FutureSplitModulesAnnotation(${futures.length} x Future)"
+}
