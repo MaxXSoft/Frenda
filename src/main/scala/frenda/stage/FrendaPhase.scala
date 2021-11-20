@@ -1,6 +1,5 @@
 package frenda.stage
 
-import firrtl.options.phases.WriteOutputAnnotations
 import firrtl.options.{Dependency, PhaseManager}
 import frenda.stage.phases._
 
@@ -16,6 +15,5 @@ object FrendaPhase {
     Dependency[PreTransform],
     Dependency[SplitCircuit],
     Dependency[IncrementalCompile],
-    Dependency[WriteOutputAnnotations],
   )
 }
