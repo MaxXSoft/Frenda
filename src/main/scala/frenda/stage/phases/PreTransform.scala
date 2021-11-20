@@ -13,13 +13,9 @@ class PreTransform extends Phase {
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.map {
     case FirrtlCircuitAnnotation(circuit) =>
-      val compiler = new Compiler(targets, currentState = Nil)
-      val transforms = compiler.flattenedTransformOrder
+      val compiler = new Compiler(targets)
       val state = CircuitState(circuit, annotations)
-      val newState = transforms.foldLeft(state) {
-        case (prev, transform) => transform.runTransform(prev)
-      }
-      FirrtlCircuitAnnotation(newState.circuit)
+      FirrtlCircuitAnnotation(compiler.transform(state).circuit)
     case other => other
   }
 }
