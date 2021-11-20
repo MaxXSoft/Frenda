@@ -53,19 +53,20 @@ class IncrementalCompile extends Phase {
    * Checks if the specific module should be compiled.
    * If so, returns a function for updating the hash file of the module.
    *
+   * @param options     Frenda related options
    * @param splitModule the input module
-   * @param targetDir   path to target directory
    * @return some function for updating the hash file if the module should be compiled,
    *         otherwise `None`
    */
-  private def shouldBeCompiled(splitModule: SplitModule, targetDir: String): Option[() => Unit] = {
+  private def shouldBeCompiled(options: FrendaOptions,
+                               splitModule: SplitModule): Option[() => Unit] = {
     // get the hash code of the current `DefModule`
     val module = splitModule.circuit.modules.collectFirst { case m: DefModule => m }.get
     val hash = StructuralHash.sha256WithSignificantPortNames(module)
     // get the hash file of the current module
-    val hashFile = Paths.get(targetDir, s"${splitModule.name}.hash")
-    if (Files.notExists(hashFile)) {
-      // file not found, compile for the first time
+    val hashFile = Paths.get(options.targetDir, s"${splitModule.name}.hash")
+    if (options.cleanBuild || Files.notExists(hashFile)) {
+      // clean build or hash file not found, just compile
       return Some(() => updateHashFile(hashFile, hash))
     }
     // check the hash code
@@ -87,7 +88,7 @@ class IncrementalCompile extends Phase {
                       annotations: AnnotationSeq,
                       splitModule: SplitModule): Unit = {
     // check if need to be compiled
-    shouldBeCompiled(splitModule, options.targetDir) match {
+    shouldBeCompiled(options, splitModule) match {
       case Some(updateHash) =>
         // emit the current circuit
         val state = CircuitState(splitModule.circuit, annotations)
