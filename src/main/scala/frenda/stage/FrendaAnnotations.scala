@@ -42,7 +42,24 @@ case object SilentModeAnnotation
   )
 }
 
-final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean) {
+case object CleanBuildAnnotation
+  extends NoTargetAnnotation
+    with FrendaAnnotation
+    with HasShellOptions {
+  val options: Seq[ShellOption[_]] = Seq(
+    new ShellOption[Unit](
+      longOption = "clean-build",
+      shortOption = Some("cb"),
+      toAnnotationSeq = _ => Seq(CleanBuildAnnotation),
+      helpText = "ignores the build cache and perform a clean build",
+    )
+  )
+}
+
+final case class FrendaOptions(targetDir: String,
+                               jobs: Int,
+                               silentMode: Boolean,
+                               cleanBuild: Boolean) {
   class GlobalExecutionContext extends ExecutionContext {
     private val threadPool = Executors.newFixedThreadPool(jobs)
 
