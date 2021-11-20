@@ -51,8 +51,6 @@ class SplitCircuit extends Phase {
    */
   private def splitCircuitIntoModules(options: FrendaOptions, circuit: Circuit): Seq[Future[SplitModule]] = {
     val modMap = circuit.modules.map(m => m.name -> m).toMap
-    // update total progress for splitting and compiling modules
-    options.totalProgress = modMap.size * 2
     // turn each module into it's own circuit with it as the top and all instantiated modules as `ExtModules`
     circuit.modules.collect {
       case m: Module =>
@@ -73,8 +71,12 @@ class SplitCircuit extends Phase {
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.map {
     case FirrtlCircuitAnnotation(circuit) =>
       val options = FrendaOptions.fromAnnotations(annotations)
+      // create tasks for splitting modules
       options.log("Splitting circuit...")
-      FutureSplitModulesAnnotation(splitCircuitIntoModules(options, circuit))
+      val tasks = splitCircuitIntoModules(options, circuit)
+      // update total progress for splitting and compiling modules
+      options.totalProgress = tasks.length * 2
+      FutureSplitModulesAnnotation(tasks)
     case other => other
   }
 }
