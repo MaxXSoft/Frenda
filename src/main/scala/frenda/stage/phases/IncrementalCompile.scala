@@ -3,6 +3,9 @@ package frenda.stage.phases
 import com.twitter.chill.{Input, KryoBase, Output, ScalaKryoInstantiator}
 import firrtl.ir.{DefModule, HashCode, StructuralHash}
 import firrtl.options.{Dependency, Phase}
+import firrtl.passes.memlib.VerilogMemDelays
+import firrtl.stage.Forms
+import firrtl.stage.transforms.Compiler
 import firrtl.{AnnotationSeq, CircuitState, VerilogEmitter}
 import frenda.stage.{FrendaOptions, FutureSplitModulesAnnotation, SplitModule}
 
@@ -87,10 +90,12 @@ class IncrementalCompile extends Phase {
     shouldBeCompiled(splitModule, options.targetDir) match {
       case Some(updateHash) =>
         // emit the current circuit
-        val v = new VerilogEmitter
         val state = CircuitState(splitModule.circuit, annotations)
+        val lowForm = new Compiler(
+          Forms.LowForm ++ Seq(Dependency(VerilogMemDelays))
+        ).transform(state)
         val writer = new StringWriter
-        v.emit(state, writer)
+        new VerilogEmitter().emit(lowForm, writer)
         // generate output
         options.logProgress(s"Done compiling module '${splitModule.name}'")
         val value = writer.toString.replaceAll("""(?m) +$""", "")
