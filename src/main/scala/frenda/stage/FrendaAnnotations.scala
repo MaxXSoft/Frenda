@@ -107,6 +107,6 @@ case class FrendaOptionsAnnotation(frendaOptions: FrendaOptions)
 
 final case class SplitModule(name: String, circuit: Circuit)
 
-case class FutureSplitModulesAnnotation(modules: Seq[Future[SplitModule]])
+case class FutureSplitModulesAnnotation(futures: Seq[Future[SplitModule]])
   extends NoTargetAnnotation
     with FrendaAnnotation
