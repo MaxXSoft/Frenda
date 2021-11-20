@@ -12,3 +12,8 @@ libraryDependencies += firrtlLib
 val kryoVersion = "5.2.0"
 lazy val kryoLib = "com.esotericsoftware.kryo" % "kryo5" % kryoVersion
 libraryDependencies += kryoLib
+
+// Assembly settings
+assembly / assemblyJarName := "frenda.jar"
+assembly / test := {}
+assembly / assemblyOutputPath := file("./utils/bin/frenda.jar")
