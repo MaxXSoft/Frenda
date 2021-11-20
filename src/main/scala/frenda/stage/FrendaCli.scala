@@ -11,5 +11,6 @@ trait FrendaCli {
   Seq(
     JobsAnnotation,
     SilentModeAnnotation,
+    CleanBuildAnnotation,
   ).foreach(_.addOptions(parser))
 }
