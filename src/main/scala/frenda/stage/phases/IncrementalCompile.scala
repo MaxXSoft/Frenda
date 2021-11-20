@@ -111,9 +111,7 @@ class IncrementalCompile extends Phase {
     // emit the current circuit
     val state = CircuitState(splitModule.circuit, annotations)
     val writer = new StringWriter
-    options.logSync(s"debug emit ${splitModule.name}")
     v.emit(state, writer)
-    options.logSync(s"debug done emit ${splitModule.name}")
     // generate output
     val value = writer.toString.replaceAll("""(?m) +$""", "")
     done()
