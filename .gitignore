@@ -24,3 +24,6 @@ project/metals.sbt
 
 # debugging
 debug
+
+# package files
+*.jar
