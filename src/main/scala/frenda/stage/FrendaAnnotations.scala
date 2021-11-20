@@ -1,5 +1,6 @@
 package frenda.stage
 
+import firrtl.AnnotationSeq
 import firrtl.annotations.{Annotation, NoTargetAnnotation}
 import firrtl.ir.Circuit
 import firrtl.options.{HasShellOptions, ShellOption, Unserializable}
@@ -36,6 +37,39 @@ case object SilentModeAnnotation
     )
   )
 }
+
+final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean) {
+  /**
+   * Logs message if not in silent mode.
+   *
+   * @param message the message
+   */
+  @inline def log(message: String): Unit = if (!silentMode) System.err.println(message)
+
+  /**
+   * Logs message if not in silent mode (thread-safe).
+   *
+   * @param message the message
+   */
+  @inline def logSync(message: String): Unit = if (!silentMode) System.err.synchronized {
+    System.err.println(message)
+  }
+}
+
+object FrendaOptions {
+  /**
+   * Gets `FrendaOptions` from annotations.
+   *
+   * @param annotations the sequence of annotations
+   * @return options
+   */
+  def fromAnnotations(annotations: AnnotationSeq): FrendaOptions =
+    annotations.collectFirst { case FrendaOptionsAnnotation(o) => o }.get
+}
+
+case class FrendaOptionsAnnotation(frendaOptions: FrendaOptions)
+  extends NoTargetAnnotation
+    with FrendaAnnotation
 
 final case class SplitModule(name: String, circuit: Circuit)
 
