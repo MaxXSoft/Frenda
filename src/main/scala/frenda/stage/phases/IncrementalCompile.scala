@@ -5,12 +5,10 @@ import com.esotericsoftware.kryo.kryo5.io.{Input, Output}
 import firrtl.ir.{DefModule, HashCode, StructuralHash}
 import firrtl.options.{Dependency, Phase}
 import firrtl.{AnnotationSeq, CircuitState, EmittedVerilogModule, EmittedVerilogModuleAnnotation, VerilogEmitter}
-import frenda.stage.{FrendaOptions, SplitModule, SplitModulesAnnotation}
+import frenda.stage.{FrendaOptions, FutureSplitModulesAnnotation, SplitModule}
 
 import java.io.StringWriter
 import java.nio.file.{Files, Path, Paths}
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -25,12 +23,6 @@ class IncrementalCompile extends Phase {
   override def optionalPrerequisiteOf = Seq()
 
   override def invalidates(a: Phase) = false
-
-  /** Total circuit number. */
-  private var totalCircuits = 0
-
-  /** Current progress. */
-  private val curProgress = new AtomicInteger
 
   /**
    * Gets a new Kryo instance.
@@ -94,16 +86,9 @@ class IncrementalCompile extends Phase {
   private def compile(annotations: AnnotationSeq,
                       splitModule: SplitModule,
                       options: FrendaOptions): Option[EmittedVerilogModule] = {
-    def done(): Unit = {
-      if (options.silentMode) return
-      // update current progress
-      val progress = curProgress.incrementAndGet()
-      options.logSync(s"[$progress/$totalCircuits] done compiling module '${splitModule.name}'")
-    }
-
     // check if need to be compiled
     if (!shouldBeCompiled(splitModule, options.targetDir)) {
-      done()
+      options.logProgress(s"Skipping module '${splitModule.name}'")
       return None
     }
     // create a new verilog emitter with custom transforms
@@ -114,27 +99,17 @@ class IncrementalCompile extends Phase {
     v.emit(state, writer)
     // generate output
     val value = writer.toString.replaceAll("""(?m) +$""", "")
-    done()
+    options.logProgress(s"Done compiling module '${splitModule.name}'")
     Some(EmittedVerilogModule(splitModule.name, value, ".v"))
   }
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.flatMap {
-    case SplitModulesAnnotation(modules) =>
+    case FutureSplitModulesAnnotation(modules) =>
       val options = FrendaOptions.fromAnnotations(annotations)
-      totalCircuits = modules.length
-
-      // create a thread pool with `jobs` threads
-      implicit val ec: ExecutionContext = new ExecutionContext {
-        private val threadPool = Executors.newFixedThreadPool(options.jobs)
-
-        override def execute(runnable: Runnable): Unit = threadPool.submit(runnable)
-
-        override def reportFailure(cause: Throwable): Unit = ()
-      }
-
+      implicit val ec: ExecutionContext = options.executionContext
       // compile and get result
-      val tasks = modules.map { sm => Future(compile(annotations, sm, options)) }
-      options.log(s"Compiling $totalCircuits modules...")
+      val tasks = modules.map { f => f.map(compile(annotations, _, options)) }
+      options.log(s"Compiling ${options.totalProgress} modules...")
       val result = Await.result(Future.sequence(tasks), Duration.Inf)
         .flatten
         .map(EmittedVerilogModuleAnnotation)
