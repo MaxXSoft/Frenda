@@ -5,6 +5,10 @@ import firrtl.annotations.{Annotation, NoTargetAnnotation}
 import firrtl.ir.Circuit
 import firrtl.options.{HasShellOptions, ShellOption, Unserializable}
 
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
+import scala.concurrent.{ExecutionContext, Future}
+
 sealed trait FrendaAnnotation extends Unserializable {
   this: Annotation =>
 }
@@ -39,20 +43,50 @@ case object SilentModeAnnotation
 }
 
 final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean) {
+  /** The global execution context of all `Future`s. */
+  lazy val executionContext: ExecutionContext = new ExecutionContext {
+    private val threadPool = Executors.newFixedThreadPool(jobs)
+
+    override def execute(runnable: Runnable): Unit = threadPool.submit(runnable)
+
+    override def reportFailure(cause: Throwable): Unit = ()
+  }
+
+  /** Total progress. */
+  var totalProgress: Int = 0
+
+  /** Current progress. */
+  private val currentProgress = new AtomicInteger
+
+  /** The print stream of logger. */
+  private val stream = System.out
+
   /**
    * Logs message if not in silent mode.
    *
    * @param message the message
    */
-  @inline def log(message: String): Unit = if (!silentMode) System.out.println(message)
+  @inline def log(message: String): Unit = if (!silentMode) stream.println(message)
 
   /**
    * Logs message if not in silent mode (thread-safe).
    *
    * @param message the message
    */
-  @inline def logSync(message: String): Unit = if (!silentMode) System.out.synchronized {
-    System.out.println(message)
+  @inline def logSync(message: String): Unit = if (!silentMode) stream.synchronized {
+    stream.println(message)
+  }
+
+  /**
+   * Logs message with progress information if not in silent mode (thread-safe).
+   *
+   * @param message the message
+   */
+  @inline def logProgress(message: String): Unit = if (!silentMode) {
+    val progress = currentProgress.incrementAndGet()
+    stream.synchronized {
+      stream.println(s"[$progress/$totalProgress] $message")
+    }
   }
 }
 
@@ -73,6 +107,6 @@ case class FrendaOptionsAnnotation(frendaOptions: FrendaOptions)
 
 final case class SplitModule(name: String, circuit: Circuit)
 
-case class SplitModulesAnnotation(modules: Seq[SplitModule])
+case class FutureSplitModulesAnnotation(modules: Seq[Future[SplitModule]])
   extends NoTargetAnnotation
     with FrendaAnnotation
