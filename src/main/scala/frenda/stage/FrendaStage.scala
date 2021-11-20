@@ -12,5 +12,6 @@ import firrtl.stage.FirrtlCli
 class FrendaStage extends Stage {
   val shell: Shell = new Shell(applicationName = "frenda") with FrendaCli with FirrtlCli
 
-  def run(annotations: AnnotationSeq): AnnotationSeq = new FrendaPhase().transform(annotations)
+  def run(annotations: AnnotationSeq): AnnotationSeq =
+    new FrendaPhase().transform(annotations)
 }
