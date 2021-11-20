@@ -4,7 +4,7 @@ import firrtl.AnnotationSeq
 import firrtl.options.{Phase, TargetDirAnnotation}
 import firrtl.stage.{FirrtlCircuitAnnotation, FirrtlFileAnnotation, FirrtlSourceAnnotation}
 import frenda.FrendaException
-import frenda.stage.JobsAnnotation
+import frenda.stage.{FrendaOptions, FrendaOptionsAnnotation, JobsAnnotation, SilentModeAnnotation}
 
 /**
  * Checks command line options, including input and output.
@@ -27,14 +27,14 @@ class CheckOptions extends Phase {
     val targetCount = annotations.count(_.isInstanceOf[TargetDirAnnotation])
     if (targetCount > 1) {
       throw new FrendaException(s"Error: there can only be 1 target directory, but found $targetCount")
-    } else if (targetCount < 1) {
-      throw new FrendaException("Error: target directory is not specified, try -td <directory>")
     }
+    val targetDir = annotations collectFirst { case TargetDirAnnotation(s) => s } getOrElse "."
     // check Frenda related options
-    val jobs = annotations.collectFirst { case JobsAnnotation(i) => i } getOrElse 1
+    val jobs = annotations collectFirst { case JobsAnnotation(i) => i } getOrElse 1
     if (jobs < 1) {
       throw new FrendaException(s"Error: jobs number must be greater than 0, but found $jobs")
     }
-    annotations
+    val silentMode = annotations.exists { case SilentModeAnnotation => true; case _ => false }
+    annotations ++ Seq(FrendaOptionsAnnotation(FrendaOptions(targetDir, jobs, silentMode)))
   }
 }
