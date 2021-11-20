@@ -1,7 +1,6 @@
 package frenda.stage.phases
 
-import com.esotericsoftware.kryo.kryo5.Kryo
-import com.esotericsoftware.kryo.kryo5.io.{Input, Output}
+import com.twitter.chill.{Input, KryoBase, Output, ScalaKryoInstantiator}
 import firrtl.ir.{DefModule, HashCode, StructuralHash}
 import firrtl.options.{Dependency, Phase}
 import firrtl.{AnnotationSeq, CircuitState, VerilogEmitter}
@@ -29,10 +28,10 @@ class IncrementalCompile extends Phase {
    *
    * @return created Kryo instance
    */
-  private def kryo(): Kryo = {
-    val kryo = new Kryo
-    kryo.setRegistrationRequired(false)
-    kryo
+  private def kryo(): KryoBase = {
+    val inst = new ScalaKryoInstantiator
+    inst.setRegistrationRequired(false)
+    inst.newKryo()
   }
 
   /**
@@ -87,15 +86,14 @@ class IncrementalCompile extends Phase {
     // check if need to be compiled
     shouldBeCompiled(splitModule, options.targetDir) match {
       case Some(updateHash) =>
-        // create a new verilog emitter with custom transforms
-        val v = new VerilogEmitter
         // emit the current circuit
+        val v = new VerilogEmitter
         val state = CircuitState(splitModule.circuit, annotations)
         val writer = new StringWriter
         v.emit(state, writer)
         // generate output
-        val value = writer.toString.replaceAll("""(?m) +$""", "")
         options.logProgress(s"Done compiling module '${splitModule.name}'")
+        val value = writer.toString.replaceAll("""(?m) +$""", "")
         // write to file
         val path = Paths.get(options.targetDir, s"${splitModule.name}.v")
         Files.writeString(path, value)
@@ -107,14 +105,15 @@ class IncrementalCompile extends Phase {
   }
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.flatMap {
-    case FutureSplitModulesAnnotation(modules) =>
+    case FutureSplitModulesAnnotation(futures) =>
       val options = FrendaOptions.fromAnnotations(annotations)
       // create compilation tasks
       implicit val ec: ExecutionContext = options.executionContext
-      val tasks = modules.map { f => f.map(compile(options, annotations, _)) }
+      val tasks = futures.map { f => f.map(compile(options, annotations, _)) }
       // compile and get result
-      options.log(s"Compiling ${options.totalProgress} modules...")
+      options.log(s"Compiling ${futures.length} modules...")
       Await.result(Future.sequence(tasks), Duration.Inf)
+      options.log(s"Done compiling")
       None
     case other => Some(other)
   }
