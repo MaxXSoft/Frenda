@@ -39,6 +39,6 @@ case object SilentModeAnnotation
 
 final case class SplitModule(name: String, circuit: Circuit)
 
-case class SplitModulesAnnotations(modules: Seq[SplitModule])
+case class SplitModulesAnnotation(modules: Seq[SplitModule])
   extends NoTargetAnnotation
     with FrendaAnnotation
