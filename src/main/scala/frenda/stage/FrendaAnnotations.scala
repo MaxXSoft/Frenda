@@ -44,15 +44,15 @@ final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean
    *
    * @param message the message
    */
-  @inline def log(message: String): Unit = if (!silentMode) System.err.println(message)
+  @inline def log(message: String): Unit = if (!silentMode) System.out.println(message)
 
   /**
    * Logs message if not in silent mode (thread-safe).
    *
    * @param message the message
    */
-  @inline def logSync(message: String): Unit = if (!silentMode) System.err.synchronized {
-    System.err.println(message)
+  @inline def logSync(message: String): Unit = if (!silentMode) System.out.synchronized {
+    System.out.println(message)
   }
 }
 
