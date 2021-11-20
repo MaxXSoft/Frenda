@@ -1,0 +1,5 @@
+#!/bin/bash
+
+path=`dirname "$0"`
+cmd="java -cp ${path}/frenda.jar frenda.FirrtlCompiler ${@:1}"
+eval $cmd
