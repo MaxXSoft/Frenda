@@ -3,9 +3,8 @@ package frenda.stage.phases
 import com.esotericsoftware.kryo.kryo5.Kryo
 import com.esotericsoftware.kryo.kryo5.io.{Input, Output}
 import firrtl.ir.{DefModule, HashCode, StructuralHash}
-import firrtl.options.Phase
-import firrtl.stage.{Forms, TransformManager}
-import firrtl.{AnnotationSeq, CircuitState, EmittedVerilogModule, EmittedVerilogModuleAnnotation, Transform, VerilogEmitter}
+import firrtl.options.{Dependency, Phase}
+import firrtl.{AnnotationSeq, CircuitState, EmittedVerilogModule, EmittedVerilogModuleAnnotation, VerilogEmitter}
 import frenda.stage.{FrendaOptions, SplitModule, SplitModulesAnnotation}
 
 import java.io.StringWriter
@@ -19,16 +18,19 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * Compiles split modules incrementally.
  */
 class IncrementalCompile extends Phase {
-  require(Forms.VerilogOptimized.startsWith(Forms.HighForm))
+  override def prerequisites = Seq(Dependency[SplitCircuit])
 
-  /** Target transforms. */
-  private val targets = Forms.VerilogOptimized.drop(Forms.HighForm.length)
+  override def optionalPrerequisites = Seq()
+
+  override def optionalPrerequisiteOf = Seq()
+
+  override def invalidates(a: Phase) = false
 
   /** Total circuit number. */
   private var totalCircuits = 0
 
   /** Current progress. */
-  private val curProgress = new AtomicInteger()
+  private val curProgress = new AtomicInteger
 
   /**
    * Gets a new Kryo instance.
@@ -36,7 +38,7 @@ class IncrementalCompile extends Phase {
    * @return created Kryo instance
    */
   private def kryo(): Kryo = {
-    val kryo = new Kryo()
+    val kryo = new Kryo
     kryo.setRegistrationRequired(false)
     kryo
   }
@@ -92,25 +94,29 @@ class IncrementalCompile extends Phase {
   private def compile(annotations: AnnotationSeq,
                       splitModule: SplitModule,
                       options: FrendaOptions): Option[EmittedVerilogModule] = {
-    // update current progress
-    if (!options.silentMode) {
+    def done(): Unit = {
+      if (options.silentMode) return
+      // update current progress
       val progress = curProgress.incrementAndGet()
-      options.logSync(s"[$progress/$totalCircuits] compiling module '${splitModule.name}'")
+      options.logSync(s"[$progress/$totalCircuits] done compiling module '${splitModule.name}'")
     }
+
     // check if need to be compiled
-    if (!shouldBeCompiled(splitModule, options.targetDir)) return None
-    // create a new verilog emitter with custom transforms
-    val v = new VerilogEmitter {
-      override def transforms: Seq[Transform] = {
-        new TransformManager(targets).flattenedTransformOrder
-      }
+    if (!shouldBeCompiled(splitModule, options.targetDir)) {
+      done()
+      return None
     }
+    // create a new verilog emitter with custom transforms
+    val v = new VerilogEmitter
     // emit the current circuit
     val state = CircuitState(splitModule.circuit, annotations)
-    val writer = new StringWriter()
+    val writer = new StringWriter
+    options.logSync(s"debug emit ${splitModule.name}")
     v.emit(state, writer)
+    options.logSync(s"debug done emit ${splitModule.name}")
     // generate output
     val value = writer.toString.replaceAll("""(?m) +$""", "")
+    done()
     Some(EmittedVerilogModule(splitModule.name, value, ".v"))
   }
 
@@ -130,10 +136,10 @@ class IncrementalCompile extends Phase {
 
       // compile and get result
       val tasks = modules.map { sm => Future(compile(annotations, sm, options)) }
+      options.log(s"Compiling $totalCircuits modules...")
       val result = Await.result(Future.sequence(tasks), Duration.Inf)
         .flatten
         .map(EmittedVerilogModuleAnnotation)
-      options.log("Done compiling.")
       result
 
     case other => Seq(other)

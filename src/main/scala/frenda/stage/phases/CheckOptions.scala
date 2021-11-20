@@ -10,6 +10,14 @@ import frenda.stage.{FrendaOptions, FrendaOptionsAnnotation, JobsAnnotation, Sil
  * Checks command line options, including input and output.
  */
 class CheckOptions extends Phase {
+  override def prerequisites = Seq()
+
+  override def optionalPrerequisites = Seq()
+
+  override def optionalPrerequisiteOf = Seq()
+
+  override def invalidates(a: Phase) = false
+
   override def transform(annotations: AnnotationSeq): AnnotationSeq = {
     // check input
     val inputCount = annotations.count {

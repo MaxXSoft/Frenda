@@ -1,7 +1,7 @@
 package frenda.stage.phases
 
 import firrtl.ir.{Circuit, DefInstance, DefModule, ExtModule, Module, Statement}
-import firrtl.options.Phase
+import firrtl.options.{Dependency, Phase}
 import firrtl.stage.FirrtlCircuitAnnotation
 import firrtl.{AnnotationSeq, WDefInstanceConnector}
 import frenda.FrendaException
@@ -13,6 +13,14 @@ import scala.collection.mutable.ArrayBuffer
  * Split the input circuit into single-module circuits.
  */
 class SplitCircuit extends Phase {
+  override def prerequisites = Seq(Dependency[PreTransform])
+
+  override def optionalPrerequisites = Seq()
+
+  override def optionalPrerequisiteOf = Seq()
+
+  override def invalidates(a: Phase) = false
+
   /**
    * Collects all instantiated modules in a module.
    *
