@@ -2,7 +2,6 @@ package frenda.stage
 
 import firrtl.options.phases.WriteOutputAnnotations
 import firrtl.options.{Dependency, PhaseManager}
-import firrtl.stage.phases.AddCircuit
 import frenda.stage.phases._
 
 /**
