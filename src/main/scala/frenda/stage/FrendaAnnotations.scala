@@ -77,7 +77,9 @@ final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean
    *
    * @param message the message
    */
-  @inline def logSync(message: String): Unit = log(message)
+  @inline def logSync(message: String): Unit = if (!silentMode) stream.synchronized {
+    stream.println(message)
+  }
 
   /**
    * Logs message with progress information if not in silent mode (thread-safe).
@@ -86,7 +88,9 @@ final case class FrendaOptions(targetDir: String, jobs: Int, silentMode: Boolean
    */
   @inline def logProgress(message: String): Unit = if (!silentMode) {
     val progress = currentProgress.incrementAndGet()
-    stream.println(s"[$progress/$totalProgress] $message")
+    stream.synchronized {
+      stream.println(s"[$progress/$totalProgress] $message")
+    }
   }
 }
 
