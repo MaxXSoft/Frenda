@@ -5,9 +5,10 @@ import firrtl.options.{Dependency, Phase}
 import firrtl.stage.FirrtlCircuitAnnotation
 import firrtl.{AnnotationSeq, WDefInstanceConnector}
 import frenda.FrendaException
-import frenda.stage.{FrendaOptions, SplitModule, SplitModulesAnnotation}
+import frenda.stage.{FrendaOptions, SplitModule, FutureSplitModulesAnnotation}
 
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Split the input circuit into single-module circuits.
@@ -48,18 +49,24 @@ class SplitCircuit extends Phase {
    * @param circuit the input circuit
    * @return sequence of split FIRRTL modules (circuits)
    */
-  private def splitCircuitIntoModules(circuit: Circuit): Seq[SplitModule] = {
+  private def splitCircuitIntoModules(options: FrendaOptions, circuit: Circuit): Seq[Future[SplitModule]] = {
     val modMap = circuit.modules.map(m => m.name -> m).toMap
+    // update total progress for splitting and compiling modules
+    options.totalProgress = modMap.size * 2
     // turn each module into it's own circuit with it as the top and all instantiated modules as `ExtModules`
     circuit.modules.collect {
       case m: Module =>
-        val instModules = collectInstantiatedModules(m, modMap)
-        val extModules = instModules.map {
-          case Module(info, name, ports, _) => ExtModule(info, name, ports, name, Seq.empty)
-          case ext: ExtModule => ext
+        implicit val ec: ExecutionContext = options.executionContext
+        Future {
+          val instModules = collectInstantiatedModules(m, modMap)
+          val extModules = instModules.map {
+            case Module(info, name, ports, _) => ExtModule(info, name, ports, name, Seq.empty)
+            case ext: ExtModule => ext
+          }
+          val circuit = Circuit(m.info, extModules :+ m, m.name)
+          options.logProgress(s"Done splitting module '${m.name}'")
+          SplitModule(m.name, circuit)
         }
-        val circuit = Circuit(m.info, extModules :+ m, m.name)
-        SplitModule(m.name, circuit)
     }
   }
 
@@ -67,7 +74,7 @@ class SplitCircuit extends Phase {
     case FirrtlCircuitAnnotation(circuit) =>
       val options = FrendaOptions.fromAnnotations(annotations)
       options.log("Splitting circuit...")
-      SplitModulesAnnotation(splitCircuitIntoModules(circuit))
+      FutureSplitModulesAnnotation(splitCircuitIntoModules(options, circuit))
     case other => other
   }
 }
