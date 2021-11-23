@@ -10,6 +10,7 @@ trait FrendaCli {
   parser.note("Frenda Specific Options")
   Seq(
     JobsAnnotation,
+    OutputDotFFileAnnotation,
     SilentModeAnnotation,
     CleanBuildAnnotation,
   ).foreach(_.addOptions(parser))
