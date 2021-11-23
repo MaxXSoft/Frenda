@@ -22,8 +22,24 @@ object JobsAnnotation extends HasShellOptions {
     new ShellOption[Int](
       longOption = "jobs",
       shortOption = Some("j"),
-      toAnnotationSeq = (i: Int) => Seq(JobsAnnotation(i)),
-      helpText = "specifies the number of jobs to run simultaneously, default to 1",
+      toAnnotationSeq = i => Seq(JobsAnnotation(i)),
+      helpText = "The number of jobs to run simultaneously, default to 1",
+    )
+  )
+}
+
+case class OutputDotFFileAnnotation(file: String)
+  extends NoTargetAnnotation
+    with FrendaAnnotation
+
+object OutputDotFFileAnnotation extends HasShellOptions {
+  val options: Seq[ShellOption[_]] = Seq(
+    new ShellOption[String](
+      longOption = "output-f-file",
+      shortOption = Some("off"),
+      toAnnotationSeq = s => Seq(OutputDotFFileAnnotation(s)),
+      helpText = "The output '.f' file",
+      helpValueName = Some("<file>"),
     )
   )
 }
@@ -37,7 +53,7 @@ case object SilentModeAnnotation
       longOption = "silent-mode",
       shortOption = Some("s"),
       toAnnotationSeq = _ => Seq(SilentModeAnnotation),
-      helpText = "do not display any additional information on the screen",
+      helpText = "Do not display any additional information on the screen",
     )
   )
 }
@@ -51,13 +67,14 @@ case object CleanBuildAnnotation
       longOption = "clean-build",
       shortOption = Some("cb"),
       toAnnotationSeq = _ => Seq(CleanBuildAnnotation),
-      helpText = "ignores the build cache and perform a clean build",
+      helpText = "Ignores the build cache and perform a clean build",
     )
   )
 }
 
 final case class FrendaOptions(targetDir: String,
                                jobs: Int,
+                               outputDotF: Option[String],
                                silentMode: Boolean,
                                cleanBuild: Boolean) {
   class GlobalExecutionContext extends ExecutionContext {
