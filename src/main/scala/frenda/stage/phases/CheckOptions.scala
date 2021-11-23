@@ -42,10 +42,11 @@ class CheckOptions extends Phase {
     if (jobs < 1) {
       throw new FrendaException(s"Error: jobs number must be greater than 0, but found $jobs")
     }
+    val outputDotF = annotations.collectFirst { case OutputDotFFileAnnotation(s) => s }
     val silentMode = annotations.exists { case SilentModeAnnotation => true; case _ => false }
     val cleanBuild = annotations.exists { case CleanBuildAnnotation => true; case _ => false }
     annotations ++ Seq(
-      FrendaOptionsAnnotation(FrendaOptions(targetDir, jobs, silentMode, cleanBuild))
+      FrendaOptionsAnnotation(FrendaOptions(targetDir, jobs, outputDotF, silentMode, cleanBuild))
     )
   }
 }
