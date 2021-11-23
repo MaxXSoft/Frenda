@@ -150,3 +150,7 @@ case class FutureSplitModulesAnnotation(futures: Seq[Future[SplitModule]])
     with FrendaAnnotation {
   override def toString: String = s"FutureSplitModulesAnnotation(${futures.length} x Future)"
 }
+
+case class WriteDotFFileAnnotation(files: Seq[String])
+  extends NoTargetAnnotation
+    with FrendaAnnotation
