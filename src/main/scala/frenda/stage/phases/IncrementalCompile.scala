@@ -7,7 +7,7 @@ import firrtl.passes.memlib.VerilogMemDelays
 import firrtl.stage.Forms
 import firrtl.stage.transforms.Compiler
 import firrtl.{AnnotationSeq, CircuitState, VerilogEmitter}
-import frenda.stage.{FrendaOptions, FutureSplitModulesAnnotation, SplitModule}
+import frenda.stage.{FrendaOptions, FutureSplitModulesAnnotation, SplitModule, WriteDotFFileAnnotation}
 
 import java.io.StringWriter
 import java.nio.file.{Files, Path, Paths}
@@ -83,12 +83,14 @@ class IncrementalCompile extends Phase {
    * @param options     Frenda related options
    * @param annotations sequence of annotations
    * @param splitModule the input module
+   * @return path to generated verilog file and recompilation flag
    */
   private def compile(options: FrendaOptions,
                       annotations: AnnotationSeq,
-                      splitModule: SplitModule): Unit = {
+                      splitModule: SplitModule): (String, Boolean) = {
+    val path = Paths.get(options.targetDir, s"${splitModule.name}.v")
     // check if need to be compiled
-    shouldBeCompiled(options, splitModule) match {
+    val compiled = shouldBeCompiled(options, splitModule) match {
       case Some(updateHash) =>
         // emit the current circuit
         val state = CircuitState(splitModule.circuit, annotations)
@@ -100,14 +102,15 @@ class IncrementalCompile extends Phase {
         // generate output
         options.logProgress(s"Done compiling module '${splitModule.name}'")
         val value = writer.toString.replaceAll("""(?m) +$""", "")
-        // write to file
-        val path = Paths.get(options.targetDir, s"${splitModule.name}.v")
+        // write to Verilog file hash file
         Files.writeString(path, value)
-        // update the hash file
         updateHash()
+        true
       case None =>
         options.logProgress(s"Skipping module '${splitModule.name}'")
+        false
     }
+    (path.toAbsolutePath.toString, compiled)
   }
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.flatMap {
@@ -116,11 +119,14 @@ class IncrementalCompile extends Phase {
       // create compilation tasks
       implicit val ec: ExecutionContext = options.executionContext
       val tasks = futures.map { f => f.map(compile(options, annotations, _)) }
-      // compile and get result
+      // compile and get results
       options.log(s"Compiling ${futures.length} modules...")
-      Await.result(Future.sequence(tasks), Duration.Inf)
+      val results = Await.result(Future.sequence(tasks), Duration.Inf)
       options.log(s"Done compiling")
-      None
+      // generate annotation if recompiled
+      Option.when(results.exists(_._2)) {
+        WriteDotFFileAnnotation(results.map(_._1))
+      }
     case other => Some(other)
   }
 }
