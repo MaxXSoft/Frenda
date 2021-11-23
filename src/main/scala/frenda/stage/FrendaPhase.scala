@@ -15,5 +15,6 @@ object FrendaPhase {
     Dependency[PreTransform],
     Dependency[SplitCircuit],
     Dependency[IncrementalCompile],
+    Dependency[WriteDotFFile],
   )
 }
