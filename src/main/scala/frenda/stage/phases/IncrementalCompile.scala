@@ -110,7 +110,7 @@ class IncrementalCompile extends Phase {
         options.logProgress(s"Skipping module '${splitModule.name}'")
         false
     }
-    (path.toAbsolutePath.toString, compiled)
+    (path.toRealPath().toAbsolutePath.toString, compiled)
   }
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.flatMap {
