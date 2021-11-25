@@ -3,13 +3,11 @@ package frenda.stage.phases
 import com.twitter.chill.{Input, KryoBase, Output, ScalaKryoInstantiator}
 import firrtl.ir.{DefModule, HashCode, StructuralHash}
 import firrtl.options.{Dependency, Phase}
-import firrtl.passes.memlib.VerilogMemDelays
 import firrtl.stage.Forms
 import firrtl.stage.transforms.Compiler
-import firrtl.{AnnotationSeq, CircuitState, VerilogEmitter}
+import firrtl.{AnnotationSeq, CircuitState, EmitCircuitAnnotation, EmittedVerilogCircuitAnnotation, VerilogEmitter}
 import frenda.stage.{FrendaOptions, FutureSplitModulesAnnotation, SplitModule, WriteDotFFileAnnotation}
 
-import java.io.StringWriter
 import java.nio.file.{Files, Path, Paths}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -87,30 +85,31 @@ class IncrementalCompile extends Phase {
    */
   private def compile(options: FrendaOptions,
                       annotations: AnnotationSeq,
-                      splitModule: SplitModule): (String, Boolean) = {
-    val path = Paths.get(options.targetDir, s"${splitModule.name}.v")
+                      splitModule: SplitModule): Option[(String, Boolean)] = {
     // check if need to be compiled
-    val compiled = shouldBeCompiled(options, splitModule) match {
+    shouldBeCompiled(options, splitModule) match {
       case Some(updateHash) =>
         // emit the current circuit
-        val state = CircuitState(splitModule.circuit, annotations)
-        val lowForm = new Compiler(
-          Forms.LowForm ++ Seq(Dependency(VerilogMemDelays))
-        ).transform(state)
-        val writer = new StringWriter
-        new VerilogEmitter().emit(lowForm, writer)
+        val state = CircuitState(splitModule.circuit, Seq(EmitCircuitAnnotation(classOf[VerilogEmitter])))
+        val compiler = new Compiler(Seq(Dependency[VerilogEmitter]), Forms.HighForm)
+        val newState = compiler.transform(state)
         // generate output
         options.logProgress(s"Done compiling module '${splitModule.name}'")
-        val value = writer.toString.replaceAll("""(?m) +$""", "")
-        // write to Verilog file hash file
-        Files.writeString(path, value)
-        updateHash()
-        true
+        newState.annotations.collectFirst {
+          case EmittedVerilogCircuitAnnotation(e) =>
+            // write to Verilog file and hash file
+            val path = Paths.get(options.targetDir, s"${splitModule.name}.v")
+            Files.writeString(path, e.value)
+            updateHash()
+            (path.toRealPath().toAbsolutePath.toString, true)
+        }
       case None =>
         options.logProgress(s"Skipping module '${splitModule.name}'")
-        false
+        val path = Paths.get(options.targetDir, s"${splitModule.name}.v")
+        Option.when(Files.exists(path)) {
+          (path.toRealPath().toAbsolutePath.toString, false)
+        }
     }
-    (path.toRealPath().toAbsolutePath.toString, compiled)
   }
 
   override def transform(annotations: AnnotationSeq): AnnotationSeq = annotations.flatMap {
@@ -121,7 +120,7 @@ class IncrementalCompile extends Phase {
       val tasks = futures.map { f => f.map(compile(options, annotations, _)) }
       // compile and get results
       options.log(s"Compiling ${futures.length} modules...")
-      val results = Await.result(Future.sequence(tasks), Duration.Inf)
+      val results = Await.result(Future.sequence(tasks), Duration.Inf).flatten
       options.log(s"Done compiling")
       // generate annotation if recompiled
       Option.when(results.exists(_._2)) {
