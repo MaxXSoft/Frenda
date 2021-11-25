@@ -11,5 +11,6 @@ All notable changes to the Frenda will be documented in this file.
 ### Fixed
 
 * Problem about Verilog file generation process.
+* Bug about hash generation.
 
 ## 0.0.1 - 2021-11-20
