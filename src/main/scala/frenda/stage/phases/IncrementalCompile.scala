@@ -1,7 +1,7 @@
 package frenda.stage.phases
 
 import com.twitter.chill.{Input, KryoBase, Output, ScalaKryoInstantiator}
-import firrtl.ir.{DefModule, HashCode, StructuralHash}
+import firrtl.ir.{HashCode, Module, StructuralHash}
 import firrtl.options.{Dependency, Phase}
 import firrtl.stage.transforms.Compiler
 import firrtl.{AnnotationSeq, CircuitState, EmitCircuitAnnotation, EmittedVerilogCircuitAnnotation, VerilogEmitter}
@@ -57,8 +57,8 @@ class IncrementalCompile extends Phase {
    */
   private def shouldBeCompiled(options: FrendaOptions,
                                splitModule: SplitModule): Option[() => Unit] = {
-    // get the hash code of the current `DefModule`
-    val module = splitModule.circuit.modules.collectFirst { case m: DefModule => m }.get
+    // get the hash code of the current `Module`
+    val module = splitModule.circuit.modules.collectFirst { case m: Module => m }.get
     val hash = StructuralHash.sha256WithSignificantPortNames(module)
     // get the hash file of the current module
     val hashFile = Paths.get(options.targetDir, s"${splitModule.name}.hash")
@@ -89,7 +89,9 @@ class IncrementalCompile extends Phase {
     shouldBeCompiled(options, splitModule) match {
       case Some(updateHash) =>
         // emit the current circuit
-        val circuitAnnotations = EmitCircuitAnnotation(classOf[VerilogEmitter]) +: annotations
+        val circuitAnnotations = annotations ++ Seq(
+          EmitCircuitAnnotation(classOf[VerilogEmitter]),
+        )
         val state = CircuitState(splitModule.circuit, circuitAnnotations)
         val compiler = new Compiler(Seq(Dependency[VerilogEmitter]), PreTransform.targets)
         val newState = compiler.transform(state)
