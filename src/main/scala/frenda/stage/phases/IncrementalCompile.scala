@@ -90,8 +90,9 @@ class IncrementalCompile extends Phase {
     shouldBeCompiled(options, splitModule) match {
       case Some(updateHash) =>
         // emit the current circuit
-        val state = CircuitState(splitModule.circuit, Seq(EmitCircuitAnnotation(classOf[VerilogEmitter])))
-        val compiler = new Compiler(Seq(Dependency[VerilogEmitter]), Forms.HighForm)
+        val circuitAnnotations = EmitCircuitAnnotation(classOf[VerilogEmitter]) +: annotations
+        val state = CircuitState(splitModule.circuit, circuitAnnotations)
+        val compiler = new Compiler(Seq(Dependency[VerilogEmitter]), PreTransform.targets)
         val newState = compiler.transform(state)
         // generate output
         options.logProgress(s"Done compiling module '${splitModule.name}'")
