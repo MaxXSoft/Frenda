@@ -3,7 +3,6 @@ package frenda.stage.phases
 import com.twitter.chill.{Input, KryoBase, Output, ScalaKryoInstantiator}
 import firrtl.ir.{DefModule, HashCode, StructuralHash}
 import firrtl.options.{Dependency, Phase}
-import firrtl.stage.Forms
 import firrtl.stage.transforms.Compiler
 import firrtl.{AnnotationSeq, CircuitState, EmitCircuitAnnotation, EmittedVerilogCircuitAnnotation, VerilogEmitter}
 import frenda.stage.{FrendaOptions, FutureSplitModulesAnnotation, SplitModule, WriteDotFFileAnnotation}
