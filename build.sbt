@@ -1,6 +1,6 @@
 organization := "net.maxxsoft"
 name := "frenda"
-version := "0.0.1"
+version := "0.0.2"
 scalaVersion := "2.13.7"
 
 // FIRRTL
