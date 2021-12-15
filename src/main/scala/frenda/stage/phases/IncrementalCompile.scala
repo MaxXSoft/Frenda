@@ -1,13 +1,12 @@
 package frenda.stage.phases
 
-import com.twitter.chill.{Input, KryoBase, Output, ScalaKryoInstantiator}
-import firrtl.ir.{HashCode, Module, StructuralHash}
 import firrtl.options.{Dependency, Phase}
 import firrtl.stage.transforms.Compiler
 import firrtl.{AnnotationSeq, CircuitState, EmitCircuitAnnotation, EmittedVerilogCircuitAnnotation, VerilogEmitter}
 import frenda.stage.{FrendaOptions, FutureSplitModulesAnnotation, SplitModule, WriteDotFFileAnnotation}
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Paths}
+import java.security.MessageDigest
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -24,29 +23,6 @@ class IncrementalCompile extends Phase {
   override def invalidates(a: Phase) = false
 
   /**
-   * Gets a new Kryo instance.
-   *
-   * @return created Kryo instance
-   */
-  private def kryo(): KryoBase = {
-    val inst = new ScalaKryoInstantiator
-    inst.setRegistrationRequired(false)
-    inst.newKryo()
-  }
-
-  /**
-   * Updates the specific hash file by using the hash code object.
-   *
-   * @param path     the hash file
-   * @param hashCode the hash code object
-   */
-  private def updateHashFile(path: Path, hashCode: HashCode): Unit = {
-    val output = new Output(Files.newOutputStream(path))
-    kryo().writeObject(output, hashCode)
-    output.close()
-  }
-
-  /**
    * Checks if the specific module should be compiled.
    * If so, returns a function for updating the hash file of the module.
    *
@@ -57,21 +33,19 @@ class IncrementalCompile extends Phase {
    */
   private def shouldBeCompiled(options: FrendaOptions,
                                splitModule: SplitModule): Option[() => Unit] = {
-    // get the hash code of the current `Module`
-    val module = splitModule.circuit.modules.collectFirst { case m: Module => m }.get
-    val hash = StructuralHash.sha256WithSignificantPortNames(module)
+    // get the hash code of the current `Circuit`
+    val hash = MessageDigest.getInstance("SHA-256")
+      .digest(splitModule.circuit.serialize.getBytes("UTF-8"))
     // get the hash file of the current module
     val hashFile = Paths.get(options.targetDir, s"${splitModule.name}.hash")
     if (options.cleanBuild || Files.notExists(hashFile)) {
       // clean build or hash file not found, just compile
-      return Some(() => updateHashFile(hashFile, hash))
+      return Some(() => Files.write(hashFile, hash))
     }
     // check the hash code
-    val input = new Input(Files.newInputStream(hashFile))
-    val result = kryo().readObject(input, hash.getClass) != hash
-    input.close()
+    val recompile = !(Files.readAllBytes(hashFile) sameElements hash)
     // if re-compilation required, update the hash file
-    Option.when(result) { () => updateHashFile(hashFile, hash) }
+    Option.when(recompile) { () => Files.write(hashFile, hash) }
   }
 
   /**
