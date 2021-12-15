@@ -2,6 +2,12 @@
 
 All notable changes to the Frenda will be documented in this file.
 
+## 0.0.3 - 2021-12-15
+
+### Fixed
+
+* Bug about incremental compilation hash generation.
+
 ## 0.0.2 - 2021-11-28
 
 ### Added
